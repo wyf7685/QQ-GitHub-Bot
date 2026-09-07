@@ -37,16 +37,6 @@ COPY ./docker/gunicorn_conf.py /gunicorn_conf.py
 
 EXPOSE 8086
 
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends curl p7zip-full fontconfig fonts-noto-color-emoji \
-  && curl -sSL https://github.com/be5invis/Sarasa-Gothic/releases/download/v1.0.14/Sarasa-TTC-1.0.14.7z -o /tmp/sarasa.7z \
-  && 7z x /tmp/sarasa.7z -o/tmp/sarasa \
-  && install -d /usr/share/fonts/sarasa-gothic \
-  && install -m644 /tmp/sarasa/*.ttc /usr/share/fonts/sarasa-gothic \
-  && fc-cache -fv \
-  && apt-get purge -y --auto-remove curl p7zip-full \
-  && rm -rf /tmp/sarasa /tmp/sarasa.7z /var/lib/apt/lists/*
-
 COPY --from=venv-stage /opt/venv /opt/venv
 ENV VIRTUAL_ENV=/opt/venv \
   PATH="/opt/venv/bin:$PATH"
