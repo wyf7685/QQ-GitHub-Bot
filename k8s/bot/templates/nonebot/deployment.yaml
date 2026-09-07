@@ -101,6 +101,43 @@ spec:
             periodSeconds: 30
           resources:
             {{- toYaml .Values.bot.resources | nindent 12 }}
+      {{- if .Values.playwright.enabled }}
+        - name: {{ .Chart.Name }}-playwright
+          {{- with .Values.playwright.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.playwright.image.repo }}:{{ .Values.playwright.image.tag }}"
+          imagePullPolicy: {{ .Values.playwright.image.pullPolicy }}
+          command:
+            - /bin/sh
+            - -c
+            - exec npx -y playwright@{{ .Values.playwright.version }} run-server --port {{ .Values.playwright.port }} --host 0.0.0.0
+          ports:
+            - name: playwright
+              containerPort: {{ .Values.playwright.port }}
+              protocol: TCP
+          readinessProbe:
+            tcpSocket:
+              port: playwright
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: playwright
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            {{- toYaml .Values.playwright.resources | nindent 12 }}
+          volumeMounts:
+            - name: playwright-shm
+              mountPath: /dev/shm
+      volumes:
+        - name: playwright-shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+      {{- end }}
       {{- with .Values.bot.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

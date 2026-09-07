@@ -10,12 +10,14 @@
 
 poetry config virtualenvs.in-project true &&
   poetry install &&
-  poetry run pre-commit install &&
-  poetry run playwright install chromium &&
-  poetry run playwright install-deps
+  poetry run pre-commit install
 
 cat >.env.dev <<EOF
 LOG_LEVEL=DEBUG
+PLAYWRIGHT_WS_ENDPOINT=ws://playwright:3000/
+PLAYWRIGHT_BROWSER_TYPE=chromium
+PLAYWRIGHT_CONNECT_TIMEOUT=30
+
 
 SUPERUSERS=[]
 

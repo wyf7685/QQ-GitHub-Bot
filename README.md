@@ -100,7 +100,6 @@ _✨ GitHub Bot for QQ ✨_
 ### Docker
 
 1. 部署要求
-
    - Docker & Docker Compose
 
      ```bash
@@ -110,8 +109,9 @@ _✨ GitHub Bot for QQ ✨_
    - 1+ CPU Core
    - 1+ GB RAM
    - 能够访问 GitHub API 的网络环境
+   - Playwright 服务能够访问 GitHub 静态资源、unpkg 和 jsDelivr
 
-   对于内存大小的限制，可以通过修改 `docker-compose.yml` 中的 `deploy.resources.limits.memory` 来调整，由于采用了 playwright(chromium) 渲染图片，不限制内存可能会导致渲染大图时直接卡死服务器。
+   Playwright 浏览器运行在独立容器中，图片渲染的内存限制应配置在 `playwright` 服务上。应用仅通过内部 WebSocket 连接该服务，不再在 Bot 镜像中安装 Chromium。
 
 2. 注册 GitHub App
    配置 GitHub App：
@@ -131,6 +131,14 @@ _✨ GitHub Bot for QQ ✨_
 
    # 必填，可以访问到机器人的公网地址，用于上传图片
    FILEHOST_URL_BASE=https://<your-domain>
+
+   # 非 Docker Compose 部署时必填，服务端版本必须与 Python Playwright 主次版本一致
+   # PLAYWRIGHT_WS_ENDPOINT=ws://playwright:3000/
+   # 可选，可选值为 chromium、firefox、webkit，默认 chromium
+   PLAYWRIGHT_BROWSER_TYPE=chromium
+   # 可选，WebSocket 连接超时秒数，默认 30
+   PLAYWRIGHT_CONNECT_TIMEOUT=30
+
 
    # onebot
    # 可选

@@ -68,9 +68,6 @@ COPY --from=build-stage /wheel /wheel
 
 RUN pip install --no-cache-dir --no-index --find-links=/wheel -r /wheel/requirements.txt && rm -rf /wheel
 
-RUN playwright install --with-deps chromium \
-  && rm -rf /var/lib/apt/lists/*
-
 COPY --from=metadata-stage /tmp/VERSION /app/VERSION
 
 COPY . /app/

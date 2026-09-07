@@ -22,6 +22,34 @@ services:
       - bot_postgres_data:/var/lib/postgresql/data
     restart: always
 
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.62.0-noble
+    init: true
+    ipc: host
+    user: pwuser
+    working_dir: /home/pwuser
+    command:
+      - /bin/sh
+      - -c
+      - exec npx -y playwright@1.62.0 run-server --port 3000 --host 0.0.0.0
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "const net=require('net');const socket=net.connect(3000,'127.0.0.1',()=>socket.end());socket.on('error',()=>process.exit(1));"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 1024M
+        reservations:
+          memory: 512M
+    restart: always
+
   nonebot:
     image: cscs181/qq-github-bot:latest # docker hub
     # image: ghcr.io/cscs181/qq-github-bot:latest # github image mirror
@@ -32,14 +60,19 @@ services:
       - ENVIRONMENT=prod
       - HOST=${HOST:-0.0.0.0}
       - PORT=${PORT:-8086}
+      - PLAYWRIGHT_WS_ENDPOINT=ws://playwright:3000/
       - MAX_WORKERS=1 # maximum workers
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - POSTGRES_HOST=postgres
       - POSTGRES_PORT=5432
     depends_on:
-      - redis
-      - postgres
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_started
+      playwright:
+        condition: service_healthy
     deploy:
       resources:
         limits:

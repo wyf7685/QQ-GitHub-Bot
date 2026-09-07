@@ -22,6 +22,9 @@ bot:
     SENTRY_DSN:
     GITHUB_THEME: light
     GITHUB_APPS: "[]"
+    PLAYWRIGHT_WS_ENDPOINT: ws://localhost:3000/
+    PLAYWRIGHT_BROWSER_TYPE: chromium
+    PLAYWRIGHT_CONNECT_TIMEOUT: "30"
   resources:
     limits:
       memory: 1Gi
@@ -82,6 +85,23 @@ postgres:
   nodeSelector: {}
   tolerations: []
   affinity: {}
+
+playwright:
+  enabled: true
+  version: "1.62.0"
+  image:
+    repo: mcr.microsoft.com/playwright
+    tag: v1.62.0-noble
+    pullPolicy: IfNotPresent
+  port: 3000
+  resources:
+    limits:
+      memory: 1Gi
+    requests:
+      memory: 512Mi
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
 
 service:
   type: LoadBalancer
