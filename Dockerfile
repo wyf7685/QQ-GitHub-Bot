@@ -1,27 +1,16 @@
-# syntax=docker/dockerfile:1
+FROM python:3.11-slim-bookworm AS venv-stage
 
-FROM python:3.11-bookworm AS requirements-stage
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+  --mount=type=cache,target=/var/lib/apt,sharing=locked \
+  apt-get update \
+  && apt-get install -y --no-install-recommends git ca-certificates
 
-WORKDIR /tmp
-
-ENV POETRY_HOME="/opt/poetry" PATH="${PATH}:/opt/poetry/bin"
-
-RUN curl -sSL https://install.python-poetry.org | python - -y && \
-  poetry self add poetry-plugin-export
-
-COPY ./pyproject.toml ./poetry.lock* /tmp/
-
-RUN poetry export -f requirements.txt --output requirements.txt --without-hashes --with deploy
-
-FROM python:3.11-bookworm AS build-stage
-
-WORKDIR /wheel
-
-COPY --from=requirements-stage /tmp/requirements.txt /wheel/requirements.txt
-
-# RUN python3 -m pip config set global.index-url https://mirrors.aliyun.com/pypi/simple
-
-RUN pip wheel --wheel-dir=/wheel --no-cache-dir --requirement /wheel/requirements.txt
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+  --mount=type=bind,from=ghcr.io/astral-sh/uv:latest,source=/uv,target=/bin/uv \
+  uv venv /opt/venv \
+  && . /opt/venv/bin/activate \
+  && uv sync --locked --active --no-dev --link-mode copy
 
 FROM python:3.11-bookworm AS metadata-stage
 
@@ -32,27 +21,21 @@ RUN --mount=type=bind,source=./.git/,target=/tmp/.git/ \
   || git rev-parse --short HEAD > /tmp/VERSION \
   && echo "Building version: $(cat /tmp/VERSION)"
 
-FROM python:3.11-slim-bookworm
+FROM python:3.11-slim-bookworm AS app
 
 WORKDIR /app
 
-ENV TZ=Asia/Shanghai DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Shanghai \
+  DEBIAN_FRONTEND=noninteractive \
+  PYTHONPATH=/app \
+  APP_MODULE=bot:app
 
 COPY ./docker/start.sh /start.sh
 RUN chmod +x /start.sh
 
 COPY ./docker/gunicorn_conf.py /gunicorn_conf.py
 
-ENV PYTHONPATH=/app
-
 EXPOSE 8086
-
-ENV APP_MODULE=bot:app
-
-# RUN mv /etc/apt/sources.list /etc/apt/sources.list.bak &&\
-#   echo "deb http://mirrors.aliyun.com/debian/ buster main" >> /etc/apt/sources.list\
-#   && echo "deb http://mirrors.aliyun.com/debian/ buster-updates main" >> /etc/apt/sources.list\
-#   && echo "deb http://mirrors.aliyun.com/debian-security/ buster/updates main" >> /etc/apt/sources.list
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends curl p7zip-full fontconfig fonts-noto-color-emoji \
@@ -64,9 +47,9 @@ RUN apt-get update \
   && apt-get purge -y --auto-remove curl p7zip-full \
   && rm -rf /tmp/sarasa /tmp/sarasa.7z /var/lib/apt/lists/*
 
-COPY --from=build-stage /wheel /wheel
-
-RUN pip install --no-cache-dir --no-index --find-links=/wheel -r /wheel/requirements.txt && rm -rf /wheel
+COPY --from=venv-stage /opt/venv /opt/venv
+ENV VIRTUAL_ENV=/opt/venv \
+  PATH="/opt/venv/bin:$PATH"
 
 COPY --from=metadata-stage /tmp/VERSION /app/VERSION
 

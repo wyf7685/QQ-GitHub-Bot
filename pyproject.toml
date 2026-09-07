@@ -45,9 +45,8 @@ deploy = [
   "uvicorn>=0.18.3,<1.0.0",
 ]
 
-[tool.poetry]
-package-mode = false
-requires-poetry = ">=2.3"
+[tool.uv]
+package = false
 
 [tool.black]
 preview = true
@@ -105,7 +104,3 @@ typeCheckingMode = "standard"
 reportShadowedImports = false
 disableBytesTypePromotions = true
 reportIncompatibleVariableOverride = false
-
-[build-system]
-requires = ["poetry-core>=2.0.0,<3.0.0"]
-build-backend = "poetry.core.masonry.api"

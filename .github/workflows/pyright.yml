@@ -9,6 +9,10 @@ on:
       - "src/**"
       - "scripts/**"
       - "bot.py"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".github/actions/setup-python/**"
+      - ".github/workflows/pyright.yml"
 
 jobs:
   pyright:
@@ -19,8 +23,6 @@ jobs:
 
       - name: Setup Python environment
         uses: ./.github/actions/setup-python
-
-      - run: echo "$(poetry env info --path)/bin" >> $GITHUB_PATH
 
       - name: Run Pyright
         uses: jakebailey/pyright-action@v3
