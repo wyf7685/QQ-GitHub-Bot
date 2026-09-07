@@ -56,7 +56,7 @@ async def handle_star_event(event: StarCreated | StarDeleted, subscribers: SUBSC
 
     for target in subscribers:
         try:
-            await send_subscriber_text(target.to_subscriber_info(), message, tag)
+            await send_subscriber_text(target, message, tag)
         except Exception as e:
             logger.opt(exception=e).warning(
                 "Send message to subscriber failed: {e}",

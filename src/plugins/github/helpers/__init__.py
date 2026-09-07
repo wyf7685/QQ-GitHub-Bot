@@ -9,9 +9,11 @@
 
 __author__ = "yanyongyu"
 
-from .image import qqofficial_conditional_image as qqofficial_conditional_image
+from .image import send_image as send_image
+from .image import build_image_message as build_image_message
 
 # isort: split
+
 
 from .rule import REPLY_PR as REPLY_PR
 from .rule import REPLY_ANY as REPLY_ANY

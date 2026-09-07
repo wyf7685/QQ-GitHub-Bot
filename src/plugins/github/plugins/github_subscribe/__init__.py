@@ -25,10 +25,10 @@ from nonebot.adapters.qq.models import APIPermissionDemandIdentify
 from nonebot.adapters.qq import GuildMessageEvent as QQGuildMessageEvent
 
 from src.plugins.github import config
-from src.providers.platform import TARGET_INFO
 from src.plugins.github.utils import get_github_bot
 from src.plugins.github.libs.github import FULLREPO_REGEX
 from src.plugins.github.models import SubData, Subscription
+from src.providers.platform import TARGET_INFO, DELIVERY_TARGET_INFO
 from src.plugins.github.helpers import (
     PRIVATE_PERM,
     GROUP_SUPERPERM,
@@ -236,11 +236,16 @@ async def process_subscribe_event(state: T_State, events: str = ArgPlainText()):
 
 
 @subscribe.handle()
-async def create_subscriptions(target_info: TARGET_INFO, state: T_State):
+async def create_subscriptions(
+    target_info: TARGET_INFO,
+    delivery_target: DELIVERY_TARGET_INFO,
+    state: T_State,
+):
     processed_events: dict[str, set[str] | None] = state["processed_events"]
     try:
         await Subscription.subscribe_by_info(
             target_info,
+            delivery_target,
             *(
                 SubData(
                     owner=state["owner"],

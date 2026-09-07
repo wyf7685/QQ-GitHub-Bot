@@ -138,6 +138,9 @@ _✨ GitHub Bot for QQ ✨_
    # 可选
    ONEBOT_SECRET=your_secret
 
+   # Optional Milky client configuration
+   MILKY_CLIENTS='[{"host":"milky","port":3000,"access_token":"milky-token"}]'
+
    # 可选，QQ 机器人配置项
    QQ_BOTS='
    [

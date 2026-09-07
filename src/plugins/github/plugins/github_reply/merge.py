@@ -16,6 +16,7 @@ from githubkit.utils import UNSET
 from nonebot.typing import T_State
 from nonebot.adapters import Message
 from nonebot import logger, on_command
+from nonebot_plugin_alconna import UniMessage
 from nonebot.exception import MatcherException
 from nonebot.params import Command, CommandArg
 from nonebot.adapters.github import ActionFailed, ActionTimeout
@@ -24,13 +25,8 @@ from src.plugins.github import config
 from src.plugins.github.utils import get_github_bot
 from src.plugins.github.helpers import NO_GITHUB_EVENT
 from src.plugins.github.libs.github import ISSUE_REGEX, FULLREPO_REGEX
+from src.providers.platform import TARGET_INFO, MESSAGE_INFO, extract_sent_message
 from src.plugins.github.cache.message_tag import PullRequestTag, create_message_tag
-from src.providers.platform import (
-    TARGET_INFO,
-    MESSAGE_INFO,
-    TargetType,
-    extract_sent_message,
-)
 from src.plugins.github.dependencies import (
     ISSUE,
     AUTHORIZED_USER,
@@ -195,16 +191,7 @@ async def handle_merge(
             await merge.finish("未知错误发生，请尝试重试或联系管理员")
 
     message = f"成功合并了 PR {owner}/{repo}#{number}"
-    match target_info.type:
-        case TargetType.QQ_USER | TargetType.QQ_GROUP:
-            result = await merge.send(message)
-        case (
-            TargetType.QQ_OFFICIAL_USER
-            | TargetType.QQGUILD_USER
-            | TargetType.QQ_OFFICIAL_GROUP
-            | TargetType.QQGUILD_CHANNEL
-        ):
-            result = await merge.send(message)
+    result = await UniMessage.text(message).send()
 
     tag = PullRequestTag(owner=owner, repo=repo, number=number, is_receive=False)
     if sent_message_info := extract_sent_message(target_info, result):

@@ -15,7 +15,7 @@ from src.providers.platform import TARGET_INFO, TargetType
 
 
 async def stop_unavailable_target(matcher: Matcher, target_info: TARGET_INFO) -> None:
-    if target_info.type in (TargetType.QQGUILD_USER):
+    if target_info.type == TargetType.QQGUILD_USER:
         await matcher.finish("当前场景不支持此操作！")
 
 

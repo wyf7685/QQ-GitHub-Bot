@@ -16,20 +16,14 @@ from nonebot.typing import T_State
 from nonebot.adapters import Message
 from nonebot.params import CommandArg
 from nonebot import logger, on_command
-from nonebot.adapters.onebot.v11 import MessageSegment as QQMS
-from nonebot.adapters.qq import MessageSegment as QQOfficialMS
+from nonebot_plugin_alconna import UniMessage
 from nonebot.adapters.github import ActionFailed, ActionTimeout
 
 from src.plugins.github import config
 from src.plugins.github.helpers import NO_GITHUB_EVENT
 from src.plugins.github.libs.github import FULLREPO_REGEX
 from src.plugins.github.cache.message_tag import ReleaseTag, create_message_tag
-from src.providers.platform import (
-    TARGET_INFO,
-    MESSAGE_INFO,
-    TargetType,
-    extract_sent_message,
-)
+from src.providers.platform import TARGET_INFO, MESSAGE_INFO, extract_sent_message
 from src.plugins.github.dependencies import (
     REPOSITORY,
     OPTIONAL_REPLY_TAG,
@@ -131,16 +125,7 @@ async def handle_content(
         f"https://opengraph.githubassets.com/{secrets.token_urlsafe(16)}/"
         f"{owner}/{repo}/releases/tag/{release_data.tag_name}"
     )
-    match target_info.type:
-        case TargetType.QQ_USER | TargetType.QQ_GROUP:
-            result = await release.send(QQMS.image(image_url))
-        case (
-            TargetType.QQ_OFFICIAL_USER
-            | TargetType.QQGUILD_USER
-            | TargetType.QQ_OFFICIAL_GROUP
-            | TargetType.QQGUILD_CHANNEL
-        ):
-            result = await release.send(QQOfficialMS.image(image_url))
+    result = await UniMessage.image(url=image_url).send()
 
     tag = ReleaseTag(
         owner=owner, repo=repo, tag=release_data.tag_name, is_receive=False

@@ -30,6 +30,7 @@ if not status_config.server_status_enabled:
     from . import common as common
 
     with contextlib.suppress(ImportError):
-        import nonebot.adapters.onebot.v11  # noqa: F401
-
         from . import onebot_v11 as onebot_v11
+
+    with contextlib.suppress(ImportError):
+        from . import milky as milky

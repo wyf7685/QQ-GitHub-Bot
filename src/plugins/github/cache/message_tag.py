@@ -17,7 +17,10 @@ from pydantic import Field, BaseModel, TypeAdapter
 from src.providers.redis import redis_client
 from src.providers.platform import MessageInfo
 
-MESSAGE_TAG_CACHE_KEY = "cache:github:message:{type}:{message_id}:tag"
+MESSAGE_TAG_CACHE_KEY = (
+    "cache:github:message:{adapter}:{self_id}:{type}:"
+    "{parent_id}:{target_id}:{message_id}:tag"
+)
 MESSAGE_TAG_CACHE_EXPIRE = timedelta(days=1)
 
 
@@ -65,6 +68,17 @@ Tag = Annotated[
 """Tag types"""
 
 
+def get_message_tag_key(message: MessageInfo) -> str:
+    return MESSAGE_TAG_CACHE_KEY.format(
+        adapter=message.adapter,
+        self_id=message.self_id,
+        type=message.type.value,
+        parent_id=message.parent_id,
+        target_id=message.target_id,
+        message_id=message.id,
+    )
+
+
 async def create_message_tag(message: MessageInfo, tag: Tag) -> None:
     """Create message tag cache
 
@@ -74,9 +88,7 @@ async def create_message_tag(message: MessageInfo, tag: Tag) -> None:
     """
 
     await redis_client.set(
-        MESSAGE_TAG_CACHE_KEY.format(
-            type=message.type.value, message_id=str(message.id)
-        ),
+        get_message_tag_key(message),
         tag.model_dump_json(),
         ex=MESSAGE_TAG_CACHE_EXPIRE,
     )
@@ -93,11 +105,5 @@ async def get_message_tag(message: MessageInfo) -> Tag | None:
         Existing tag data
     """
     data: bytes | None
-    if (
-        data := await redis_client.get(
-            MESSAGE_TAG_CACHE_KEY.format(
-                type=message.type.value, message_id=str(message.id)
-            )
-        )
-    ) is not None:
+    if (data := await redis_client.get(get_message_tag_key(message))) is not None:
         return TypeAdapter(Tag).validate_json(data)

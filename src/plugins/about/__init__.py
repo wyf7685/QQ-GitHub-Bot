@@ -11,18 +11,12 @@ __author__ = "yanyongyu"
 
 from nonebot import on_command
 from nonebot.plugin import PluginMetadata
-from nonebot.adapters.onebot.v11 import MessageSegment as QQMS
-from nonebot.adapters.qq import MessageSegment as QQOfficialMS
+from nonebot_plugin_alconna import UniMessage
 
-from src.plugins.github.helpers import NO_GITHUB_EVENT
 from src.plugins.github.libs.opengraph import get_opengraph_image
+from src.plugins.github.helpers import NO_GITHUB_EVENT, send_image
 from src.plugins.github.cache.message_tag import RepoTag, create_message_tag
-from src.providers.platform import (
-    TARGET_INFO,
-    MESSAGE_INFO,
-    TargetType,
-    extract_sent_message,
-)
+from src.providers.platform import TARGET_INFO, MESSAGE_INFO, extract_sent_message
 
 __plugin_meta__ = PluginMetadata(
     "关于",
@@ -49,18 +43,9 @@ async def handle_about(target_info: TARGET_INFO, message_info: MESSAGE_INFO):
     tag = RepoTag(owner=OWNER, repo=REPO, is_receive=False)
 
     if not (image := await get_opengraph_image(tag)):
-        result = await about.send(HOMEPAGE)
+        result = await UniMessage.text(HOMEPAGE).send()
     else:
-        match target_info.type:
-            case TargetType.QQ_USER | TargetType.QQ_GROUP:
-                result = await about.send(QQMS.image(image))
-            case (
-                TargetType.QQ_OFFICIAL_USER
-                | TargetType.QQGUILD_USER
-                | TargetType.QQ_OFFICIAL_GROUP
-                | TargetType.QQGUILD_CHANNEL
-            ):
-                result = await about.send(QQOfficialMS.file_image(image))
+        result = await send_image(image)
 
     if sent_message_info := extract_sent_message(target_info, result):
         await create_message_tag(sent_message_info, tag)

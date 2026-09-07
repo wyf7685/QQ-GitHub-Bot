@@ -16,25 +16,18 @@ from nonebot.adapters import Message
 from nonebot.params import CommandArg
 from nonebot import logger, on_command
 from playwright.async_api import Error, TimeoutError
-from nonebot.adapters.onebot.v11 import MessageSegment as QQMS
-from nonebot.adapters.qq import MessageSegment as QQOfficialMS
 from nonebot.adapters.github import ActionFailed, ActionTimeout
 
 from src.plugins.github import config
 from src.plugins.github.libs.github import FULLREPO_REGEX
 from src.plugins.github.libs.renderer import readme_to_image
+from src.plugins.github.helpers import NO_GITHUB_EVENT, send_image
 from src.plugins.github.cache.message_tag import RepoTag, create_message_tag
-from src.plugins.github.helpers import NO_GITHUB_EVENT, qqofficial_conditional_image
+from src.providers.platform import TARGET_INFO, MESSAGE_INFO, extract_sent_message
 from src.plugins.github.dependencies import (
     REPOSITORY,
     OPTIONAL_REPLY_TAG,
     GITHUB_PUBLIC_CONTEXT,
-)
-from src.providers.platform import (
-    TARGET_INFO,
-    MESSAGE_INFO,
-    TargetType,
-    extract_sent_message,
 )
 
 readme = on_command(
@@ -130,13 +123,7 @@ async def render_content(
         logger.opt(exception=e).error(f"Failed while generating repo readme image: {e}")
         await readme.finish("生成图片出错！请稍后再试")
 
-    match target_info.type:
-        case TargetType.QQ_USER | TargetType.QQ_GROUP:
-            result = await readme.send(QQMS.image(img))
-        case TargetType.QQ_OFFICIAL_USER | TargetType.QQ_OFFICIAL_GROUP:
-            result = await readme.send(await qqofficial_conditional_image(img))
-        case TargetType.QQGUILD_USER | TargetType.QQGUILD_CHANNEL:
-            result = await readme.send(QQOfficialMS.file_image(img))
+    result = await send_image(img)
 
     tag = RepoTag(owner=owner, repo=repo, is_receive=False)
     if sent_message_info := extract_sent_message(target_info, result):

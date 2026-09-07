@@ -1,23 +1,16 @@
-"""
-@Author         : yanyongyu
-@Date           : 2024-06-02 16:44:42
-@LastEditors    : yanyongyu
-@LastEditTime   : 2024-06-02 16:48:07
-@Description    : None
-@GitHub         : https://github.com/yanyongyu
-"""
-
-__author__ = "yanyongyu"
-
-from nonebot.adapters.qq import MessageSegment as QQOfficialMS
+from nonebot_plugin_alconna.uniseg import Receipt
+from nonebot_plugin_alconna import Target, UniMessage
 
 from src.providers.filehost import save_image
 
-QQOFFICIAL_IMAGE_MAX_SIZE = 2 * 1024 * 1024
+INLINE_IMAGE_MAX_SIZE = 2 * 1024 * 1024
 
 
-async def qqofficial_conditional_image(image: bytes) -> QQOfficialMS:
-    """Get the QQ official image message segment depends on image size"""
-    if len(image) > QQOFFICIAL_IMAGE_MAX_SIZE:
-        return QQOfficialMS.image(await save_image(image))
-    return QQOfficialMS.file_image(image)
+async def build_image_message(image: bytes) -> UniMessage:
+    if len(image) > INLINE_IMAGE_MAX_SIZE:
+        return UniMessage.image(url=await save_image(image))
+    return UniMessage.image(raw=image)
+
+
+async def send_image(image: bytes, target: Target | None = None) -> Receipt:
+    return await (await build_image_message(image)).send(target)

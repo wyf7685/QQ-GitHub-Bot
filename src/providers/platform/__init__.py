@@ -26,6 +26,7 @@ from .targets import UserInfo as UserInfo
 from .targets import GroupInfo as GroupInfo
 from .targets import TargetInfo as TargetInfo
 from .targets import TargetType as TargetType
+from .targets import DeliveryTargetInfo as DeliveryTargetInfo
 
 # isort: split
 
@@ -37,11 +38,11 @@ from .extractors import extract_role as extract_role
 from .extractors import extract_user as extract_user
 from .extractors import extract_group as extract_group
 from .extractors import extract_target as extract_target
-from .extractors import get_target_bot as get_target_bot
 from .extractors import extract_message as extract_message
 from .extractors import extract_is_private as extract_is_private
 from .extractors import extract_sent_message as extract_sent_message
 from .extractors import extract_reply_message as extract_reply_message
+from .extractors import extract_delivery_target as extract_delivery_target
 
 OPTIONAL_USER_INFO: TypeAlias = Annotated[
     UserInfo | None, Depends(extract_user, use_cache=True)
@@ -51,6 +52,9 @@ OPTIONAL_GROUP_INFO: TypeAlias = Annotated[
 ]
 OPTIONAL_TARGET_INFO: TypeAlias = Annotated[
     TargetInfo | None, Depends(extract_target, use_cache=True)
+]
+OPTIONAL_DELIVERY_TARGET_INFO: TypeAlias = Annotated[
+    DeliveryTargetInfo | None, Depends(extract_delivery_target, use_cache=True)
 ]
 OPTIONAL_IS_PRIVATE: TypeAlias = Annotated[
     bool | None, Depends(extract_is_private, use_cache=True)
@@ -93,6 +97,17 @@ async def ensure_target(
     return target
 
 
+async def ensure_delivery_target(
+    event: Event,
+    matcher: Matcher,
+    target: OPTIONAL_DELIVERY_TARGET_INFO,
+) -> DeliveryTargetInfo:
+    if target is None:
+        logger.error(f"Unprocessed delivery target for event type: {type(event)}")
+        await matcher.finish()
+    return target
+
+
 async def ensure_is_private(
     event: Event, matcher: Matcher, is_private: OPTIONAL_IS_PRIVATE
 ) -> bool:
@@ -124,6 +139,10 @@ GROUP_INFO: TypeAlias = Annotated[GroupInfo, Depends(ensure_group, use_cache=Tru
 """Group info dependency. Finish the session if group info cannot be extracted."""
 TARGET_INFO: TypeAlias = Annotated[TargetInfo, Depends(ensure_target, use_cache=True)]
 """Target info dependency. Finish the session if target info cannot be extracted.""" ""
+DELIVERY_TARGET_INFO: TypeAlias = Annotated[
+    DeliveryTargetInfo, Depends(ensure_delivery_target, use_cache=True)
+]
+"""Exact adapter and bot route for proactive delivery."""
 IS_PRIVATE: TypeAlias = Annotated[bool, Depends(ensure_is_private, use_cache=True)]
 """Is private dependency. Finish the session if is private cannot be extracted."""
 ROLE: TypeAlias = Annotated[RoleLevel, Depends(ensure_role, use_cache=True)]

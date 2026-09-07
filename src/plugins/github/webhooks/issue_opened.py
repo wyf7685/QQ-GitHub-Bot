@@ -94,11 +94,9 @@ async def handle_issue_opened_event(
     for target in subscribers:
         try:
             if image is not None:
-                await send_subscriber_image(target.to_subscriber_info(), image, tag)
+                await send_subscriber_image(target, image, tag)
             else:
-                await send_subscriber_text(
-                    target.to_subscriber_info(), fallback_message, tag
-                )
+                await send_subscriber_text(target, fallback_message, tag)
         except Exception as e:
             logger.opt(exception=e).warning(
                 "Send message to subscriber failed: {e}",

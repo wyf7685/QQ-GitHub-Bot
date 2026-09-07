@@ -19,7 +19,8 @@ from sqlalchemy import Index, String, UniqueConstraint, case
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, insert
 from sqlalchemy import func, select, update, distinct, bindparam
 
-from src.providers.platform import TargetInfo
+from src.providers.platform import TargetInfo, DeliveryTargetInfo
+from src.providers.platform.targets import get_fallback_delivery_target
 
 
 class SubData(TypedDict):
@@ -45,6 +46,7 @@ class Subscription(Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     subscriber: Mapped[dict] = mapped_column(JSONB, index=True, nullable=False)
+    delivery_target: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     owner: Mapped[str] = mapped_column(String(), nullable=False)
     repo: Mapped[str] = mapped_column(String(), nullable=False)
     event: Mapped[str] = mapped_column(String(), nullable=False)
@@ -53,6 +55,12 @@ class Subscription(Model):
     def to_subscriber_info(self) -> TargetInfo:
         """Convert to subscriber info"""
         return TypeAdapter(TargetInfo).validate_python(self.subscriber)
+
+    def to_delivery_target(self) -> DeliveryTargetInfo | None:
+        """Convert the stored route, falling back for legacy subscriptions."""
+        if self.delivery_target:
+            return DeliveryTargetInfo.model_validate(self.delivery_target)
+        return get_fallback_delivery_target(self.to_subscriber_info())
 
     @classmethod
     async def from_info(cls, info: TargetInfo) -> list[Self]:
@@ -64,10 +72,14 @@ class Subscription(Model):
 
     @classmethod
     async def subscribe_by_info(
-        cls, info: TargetInfo | Self, *subsciptions: SubData
+        cls,
+        info: TargetInfo | Self,
+        delivery_target: DeliveryTargetInfo | None,
+        *subsciptions: SubData,
     ) -> None:
-        """Create or update user subscriptions by user info"""
+        """Create or update subscriptions and their proactive route."""
         if isinstance(info, cls):
+            delivery_target = delivery_target or info.to_delivery_target()
             info = info.to_subscriber_info()
 
         info = cast(TargetInfo, info)
@@ -76,6 +88,9 @@ class Subscription(Model):
             [
                 {
                     "subscriber": info.model_dump(),
+                    "delivery_target": (
+                        delivery_target.model_dump() if delivery_target else None
+                    ),
                     **subscription,
                 }
                 for subscription in subsciptions
@@ -102,7 +117,13 @@ class Subscription(Model):
         )
 
         update_sql = insert_sql.on_conflict_do_update(
-            constraint=UNIQUE_SUBSCRIPTION, set_={"action": new_action}
+            constraint=UNIQUE_SUBSCRIPTION,
+            set_={
+                "action": new_action,
+                "delivery_target": func.coalesce(
+                    insert_sql.excluded.delivery_target, cls.delivery_target
+                ),
+            },
         )
         async with get_session() as session:
             await session.execute(update_sql)

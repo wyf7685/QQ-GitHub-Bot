@@ -60,7 +60,7 @@ async def handle_unknown_event(
     tag = RepoTag(owner=owner, repo=repo, is_receive=False)
     for target in subscribers:
         try:
-            await send_subscriber_text(target.to_subscriber_info(), message, tag)
+            await send_subscriber_text(target, message, tag)
         except Exception as e:
             logger.opt(exception=e).warning(
                 "Send message to subscriber failed: {e}",

@@ -10,16 +10,12 @@
 __author__ = "yanyongyu"
 
 from nonebot import on_command
+from nonebot_plugin_alconna import UniMessage
 
 from src.plugins.github import config
 from src.plugins.github.helpers import NO_GITHUB_EVENT
 from src.plugins.github.dependencies import REPLY_TAG, OPTIONAL_REPLY_TAG
-from src.providers.platform import (
-    TARGET_INFO,
-    MESSAGE_INFO,
-    TargetType,
-    extract_sent_message,
-)
+from src.providers.platform import TARGET_INFO, MESSAGE_INFO, extract_sent_message
 from src.plugins.github.cache.message_tag import (
     IssueTag,
     CommitTag,
@@ -65,16 +61,7 @@ async def handle_link(
         case ReleaseTag():
             url += f"/releases/tag/{tag.tag}"
 
-    match target_info.type:
-        case TargetType.QQ_USER | TargetType.QQ_GROUP:
-            result = await link.send(url)
-        case (
-            TargetType.QQ_OFFICIAL_USER
-            | TargetType.QQGUILD_USER
-            | TargetType.QQ_OFFICIAL_GROUP
-            | TargetType.QQGUILD_CHANNEL
-        ):
-            result = await link.send(url)
+    result = await UniMessage.text(url).send()
 
     tag = tag.copy(update={"is_receive": False})
     if sent_message_info := extract_sent_message(target_info, result):

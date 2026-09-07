@@ -13,6 +13,7 @@ __author__ = "yanyongyu"
 import nonebot
 from sqlalchemy import URL
 from nonebot.adapters.qq import Adapter as QQAdapter
+from nonebot.adapters.milky import Adapter as MilkyAdapter
 from nonebot.adapters.github import Adapter as GitHubAdapter
 from nonebot.adapters.onebot.v11 import Adapter as ONEBOT_V11_Adapter
 
@@ -21,6 +22,7 @@ app = nonebot.get_asgi()
 
 driver = nonebot.get_driver()
 driver.register_adapter(QQAdapter)
+driver.register_adapter(MilkyAdapter)
 driver.register_adapter(GitHubAdapter)
 driver.register_adapter(ONEBOT_V11_Adapter)
 
@@ -33,6 +35,9 @@ config.sqlalchemy_database_url = URL.create(  # type: ignore
     port=config.postgres_port,
     database=config.postgres_db,
 ).render_as_string(hide_password=False)
+
+nonebot.load_plugin("nonebot_plugin_alconna")
+nonebot.load_plugin("nonebot_plugin_uninfo")
 
 nonebot.load_plugins("src/providers")
 nonebot.load_all_plugins(set(config.plugins), {"src/plugins"}.union(config.plugin_dirs))

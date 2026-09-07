@@ -16,15 +16,12 @@ from nonebot.params import CommandArg
 from nonebot import logger, on_command
 from nonebot.plugin import PluginMetadata
 from playwright.async_api import Error, TimeoutError
-from nonebot.adapters.onebot.v11 import MessageSegment as QQMS
-from nonebot.adapters.qq import MessageSegment as QQOfficialMS
 from nonebot.adapters.github import ActionFailed, GraphQLError, ActionTimeout
 
 from src.plugins.github import config
 from src.plugins.github.utils import get_github_bot
-from src.plugins.github.helpers import NO_GITHUB_EVENT
-from src.providers.platform import TARGET_INFO, TargetType
 from src.plugins.github.dependencies import AUTHORIZED_USER
+from src.plugins.github.helpers import NO_GITHUB_EVENT, send_image
 from src.plugins.github.libs.renderer import user_contribution_to_image
 
 __plugin_meta__ = PluginMetadata(
@@ -66,9 +63,7 @@ contribution = on_command(
 
 
 @contribution.handle()
-async def handle_contribution(
-    target_info: TARGET_INFO, user: AUTHORIZED_USER, args: Message = CommandArg()
-):
+async def handle_contribution(user: AUTHORIZED_USER, args: Message = CommandArg()):
     arg = args.extract_plain_text().strip()
 
     from_date: date | None = None
@@ -156,10 +151,4 @@ async def handle_contribution(
         )
         await contribution.finish("生成图片出错！请稍后再试")
 
-    match target_info.type:
-        case TargetType.QQ_USER | TargetType.QQ_GROUP:
-            await contribution.send(QQMS.image(img))
-        case TargetType.QQ_OFFICIAL_USER | TargetType.QQ_OFFICIAL_GROUP:
-            await contribution.send(QQOfficialMS.file_image(img))
-        case TargetType.QQGUILD_USER | TargetType.QQGUILD_CHANNEL:
-            await contribution.send(QQOfficialMS.file_image(img))
+    await send_image(img)

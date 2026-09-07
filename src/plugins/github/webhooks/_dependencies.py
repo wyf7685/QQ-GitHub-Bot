@@ -10,32 +10,21 @@
 __author__ = "yanyongyu"
 
 from datetime import timedelta
-from typing import Generic, TypeVar, Annotated, TypeAlias, cast
+from typing import Generic, TypeVar, Annotated, TypeAlias
 
 from nonebot import logger
 from nonebot.params import Depends
 from nonebot.matcher import Matcher
 from nonebot.adapters.github import Event
-from nonebot.adapters.onebot.v11 import Bot as QQBot
-from nonebot.adapters.qq import Bot as QQOfficialBot
+from nonebot_plugin_alconna import UniMessage
 from nonebot.adapters.github.utils import get_attr_or_item
-from nonebot.adapters.onebot.v11 import Message as QQMessage
-from nonebot.adapters.onebot.v11 import MessageSegment as QQMS
 from nonebot.adapters.qq.exception import ActionFailed as QQOfficialActionFailed
 
 from src.providers.redis import redis_client
 from src.plugins.github.models import Subscription
-from src.plugins.github.helpers import qqofficial_conditional_image
+from src.providers.platform import extract_sent_message
+from src.plugins.github.helpers import build_image_message
 from src.plugins.github.cache.message_tag import Tag, create_message_tag
-from src.providers.platform import TargetInfo, get_target_bot, extract_sent_message
-from src.providers.platform.targets import (
-    QQUserInfo,
-    QQGroupInfo,
-    QQGuildUserInfo,
-    QQGuildChannelInfo,
-    QQOfficialUserInfo,
-    QQOfficialGroupInfo,
-)
 
 T = TypeVar("T", bound=Event)
 
@@ -70,132 +59,38 @@ async def list_subscribers(event_info: EVENT_INFO) -> list[Subscription]:
 SUBSCRIBERS: TypeAlias = Annotated[list[Subscription], Depends(list_subscribers)]
 
 
-async def send_subscriber_text(target_info: TargetInfo, text: str, tag: Tag) -> None:
-    bot = await get_target_bot(target_info)
-    if not bot:
-        logger.error("Unable to get target bot", target_info=target_info)
+async def send_subscriber_message(
+    subscription: Subscription, message: UniMessage, tag: Tag
+) -> None:
+    delivery_target = subscription.to_delivery_target()
+    if delivery_target is None:
+        logger.error(
+            "Unable to build subscriber delivery target",
+            target_info=subscription.to_subscriber_info(),
+        )
         return
 
     try:
-        match target_info:
-            case QQUserInfo():
-                result = await cast(QQBot, bot).send_private_msg(
-                    user_id=target_info.qq_user_id, message=text
-                )
-            case QQGroupInfo():
-                result = await cast(QQBot, bot).send_group_msg(
-                    group_id=target_info.qq_group_id, message=text
-                )
-            case QQOfficialUserInfo():
-                result = await cast(QQOfficialBot, bot).post_c2c_messages(
-                    openid=target_info.qq_user_open_id, msg_type=0, content=text
-                )
-            case QQOfficialGroupInfo():
-                result = await cast(QQOfficialBot, bot).post_group_messages(
-                    group_openid=target_info.qq_group_open_id, msg_type=0, content=text
-                )
-            case QQGuildUserInfo():
-                logger.error("Unable to send message to QQGuild User", user=target_info)
-                return
-            case QQGuildChannelInfo():
-                result = await cast(QQOfficialBot, bot).post_messages(
-                    channel_id=target_info.qq_channel_id, content=text
-                )
+        receipt = await delivery_target.to_target().send(message)
     except QQOfficialActionFailed as e:
         if e.code in (304045, 304046, 304047, 304048, 304049, 304050):
             return
         raise
 
-    if sent_message_info := extract_sent_message(target_info, result):
+    if sent_message_info := extract_sent_message(
+        subscription.to_subscriber_info(), receipt
+    ):
         await create_message_tag(sent_message_info, tag)
+
+
+async def send_subscriber_text(subscription: Subscription, text: str, tag: Tag) -> None:
+    await send_subscriber_message(subscription, UniMessage.text(text), tag)
 
 
 async def send_subscriber_image(
-    target_info: TargetInfo, image: bytes, tag: Tag
+    subscription: Subscription, image: bytes, tag: Tag
 ) -> None:
-    bot = await get_target_bot(target_info)
-    if not bot:
-        logger.error("Unable to get target bot", target_info=target_info)
-        return
-
-    try:
-        match target_info:
-            case QQUserInfo():
-                result = await cast(QQBot, bot).send_private_msg(
-                    user_id=target_info.qq_user_id, message=QQMessage(QQMS.image(image))
-                )
-            case QQGroupInfo():
-                result = await cast(QQBot, bot).send_group_msg(
-                    group_id=target_info.qq_group_id,
-                    message=QQMessage(QQMS.image(image)),
-                )
-            case QQOfficialUserInfo():
-                result = await cast(QQOfficialBot, bot).send_to_c2c(
-                    openid=target_info.qq_user_open_id,
-                    message=await qqofficial_conditional_image(image),
-                )
-            case QQOfficialGroupInfo():
-                result = await cast(QQOfficialBot, bot).send_to_group(
-                    group_openid=target_info.qq_group_open_id,
-                    message=await qqofficial_conditional_image(image),
-                )
-            case QQGuildUserInfo():
-                logger.error("Unable to send message to QQGuild User", user=target_info)
-                return
-            case QQGuildChannelInfo():
-                result = await cast(QQOfficialBot, bot).post_messages(
-                    channel_id=target_info.qq_channel_id, file_image=image
-                )
-    except QQOfficialActionFailed as e:
-        if e.code in (304045, 304046, 304047, 304048, 304049, 304050):
-            return
-        raise
-
-    if sent_message_info := extract_sent_message(target_info, result):
-        await create_message_tag(sent_message_info, tag)
-
-
-async def send_subscriber_image_url(
-    target_info: TargetInfo, image: str, tag: Tag
-) -> None:
-    bot = await get_target_bot(target_info)
-    if not bot:
-        logger.error("Unable to get target bot", target_info=target_info)
-        return
-
-    try:
-        match target_info:
-            case QQUserInfo():
-                result = await cast(QQBot, bot).send_private_msg(
-                    user_id=target_info.qq_user_id, message=QQMessage(QQMS.image(image))
-                )
-            case QQGroupInfo():
-                result = await cast(QQBot, bot).send_group_msg(
-                    group_id=target_info.qq_group_id,
-                    message=QQMessage(QQMS.image(image)),
-                )
-            case QQOfficialUserInfo():
-                result = await cast(QQOfficialBot, bot).post_c2c_files(
-                    openid=target_info.qq_user_open_id, file_type=1, url=image
-                )
-            case QQOfficialGroupInfo():
-                result = await cast(QQOfficialBot, bot).post_group_files(
-                    group_openid=target_info.qq_group_open_id, file_type=1, url=image
-                )
-            case QQGuildUserInfo():
-                logger.error("Unable to send message to QQGuild User", user=target_info)
-                return
-            case QQGuildChannelInfo():
-                result = await cast(QQOfficialBot, bot).post_messages(
-                    channel_id=target_info.qq_channel_id, image=image
-                )
-    except QQOfficialActionFailed as e:
-        if e.code in (304045, 304046, 304047, 304048, 304049, 304050):
-            return
-        raise
-
-    if sent_message_info := extract_sent_message(target_info, result):
-        await create_message_tag(sent_message_info, tag)
+    await send_subscriber_message(subscription, await build_image_message(image), tag)
 
 
 class Throttle(Generic[T]):
